@@ -75,16 +75,19 @@ function renderVideos (videos) {
     const wrapper = document.createElement('div')
     wrapper.innerHTML = html
     const videoEl = wrapper.firstChild.firstChild
+    let dlInProgress = false
     videoEl.addEventListener('click', (e) => {
-      if (e.target !== progress && !progress.contains(e.target)) {
+      if (e.target !== progress && !progress.contains(e.target) && !dlInProgress) {
+        dlInProgress = true
         showDownloadView(videoEl)
         require('electron').remote.app.emit('video', `https://www.youtube.com/watch?v=${video.videoId}`)
         require('electron').ipcRenderer.on('dl-progress', (_, percentage) => {
           document.querySelector('progress').value = percentage
-          if (percentage === 100) {
-            importBtn.removeAttribute('disabled')
-            cancelBtn.textContent = 'Back'
-          }
+        })
+        require('electron').ipcRenderer.on('dl-complete', () => {
+          dlInProgress = false
+          importBtn.removeAttribute('disabled')
+          cancelBtn.textContent = 'Back'
         })
       }
     })

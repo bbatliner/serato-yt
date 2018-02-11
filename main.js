@@ -4,12 +4,11 @@ const electron = require('electron')
 const app = electron.app
 // Module to create native browser window.
 const BrowserWindow = electron.BrowserWindow
-// Module to create tray items.
-const Tray = electron.Tray
-// Module to create Menus.
-const Menu = electron.Menu
 
+const Tray = electron.Tray
+const Menu = electron.Menu
 const globalShortcut = electron.globalShortcut
+const dialog = electron.dialog
 
 const path = require('path')
 const url = require('url')
@@ -24,10 +23,46 @@ let tray
 function registerTray () {
   tray = new Tray('./serato-yt.ico')
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Click me', type: 'radio'}
+    { label: 'Show main window', type: 'normal', click () { mainWindow.show() } },
+    { label: 'Open download location', type: 'normal', click: openDownloadLocation },
+    { type: 'separator' },
+    { label: 'Set default download location', type: 'normal', click: setDownloadLocation },
+    { label: 'Set drop point for import', type: 'normal', click: setDropLocation },
+    { type: 'separator' },
+    { label: 'Quit', role: 'quit' }
   ])
   tray.setToolTip('Serato YouTube Importer')
   tray.setContextMenu(contextMenu)
+}
+
+// TODO: load these values from config at start
+
+function openDownloadLocation () {
+
+}
+
+function setDownloadLocation () {
+  const location = dialog.showOpenDialog({ properties: ['openDirectory'] })
+  console.log(location)
+  // TODO: save location
+}
+
+function setDropLocation () {
+  // TODO: cancel button
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Set drop point',
+    message: 'After closing this message box, please hold your mouse on your Serato library inside of the Serato application. This is where Serato YouTube Importer will drop the MP3s it downloads, much as you would by hand. Your location will be recorded after three seconds.'
+  })
+  setTimeout(() => {
+    const pt = electron.screen.getCursorScreenPoint()
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Drop location saved!',
+      message: `Drop location saved at (${pt.x},${pt.y}).`
+    })
+    // TODO: save location
+  }, 3000)
 }
 
 function createWindow () {
@@ -118,6 +153,7 @@ app.on('video', (url) => {
     //   title: 'Download ready for import.',
     //   content: 'Click here or press Ctrl+Alt+D to open.'
     // })
+    mainWindow.webContents.send('dl-complete')
     latestFilepath = filepath
   })
 })
