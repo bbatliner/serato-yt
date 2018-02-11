@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Serato YouTube Import</title>
+        <style>
+            a { text-decoration: none; }
+            input { border-style: none; background: transparent; outline: none; }
+            html, body {
+                font-family: 'Arial', sans-serif;
+                height: 100%;
+                width: 100%;
+                background: rgba(0, 0, 0, 0);
+                overflow: hidden;
+                padding: 0;
+                margin: 0;
+                -webkit-app-region: no-drag;
+                margin-top: 11.5px; /* for the weird title bar */
+            }
+            body {
+                -webkit-font-smoothing: antialiased;
+            }
+            @keyframes gradient { 
+              0% { background-position: 0 0 }
+              100% { background-position: 100% 0 }
+            }
+            .styled-input {
+                position: relative;
+                display: flex;
+                flex-direction: row;
+                font-size: 32px;
+                margin: 0 auto;
+                border-radius: 4px;
+                padding: 1.4rem 2rem 1.6rem;
+                background: rgba(57, 63, 84, 0.85);
+                transition: opacity 0.2s ease-in;
+            }
+            .styled-input::after {
+                content: "";
+                position: absolute;
+                left: 0px;
+                right: 0px;
+                bottom: 0px;
+                z-index: 999;
+                height: 3px;
+                border-bottom-left-radius: 3px;
+                border-bottom-right-radius: 3px;
+                background-position: 0% 0%;
+                background: linear-gradient(to right, #B294FF, #57E6E6, #FEFFB8, #57E6E6, #B294FF, #57E6E6);
+                background-size: 500% auto;
+                animation: gradient 3s linear infinite;
+            }
+            input {
+                flex-grow: 1;
+                color: #BFD2FF;
+                font-size: 1.8rem;
+                line-height: 2.4rem;
+                vertical-align: middle;
+            }
+            input::placeholder {
+                color: #7881A1;
+            }
+            
+            #wrapper {
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+            }
+            #results {
+                padding-left: 0px;
+                margin-top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                padding-right: 17px;
+            }
+            @keyframes fadein {
+                from { opacity: 0; transform: translateY(-25px); }
+                to   { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes fadeout {
+                from { opacity: 1; transform: translateY(); }
+                to   { opacity: 0; transform: translateY(-12px); }
+            }
+            .result-container {
+
+            }
+            li.result {
+                position: relative;
+                list-style: none;
+                width: 100%;
+                padding-right: 17px;
+                top: 0;
+                transition: top 0.2s ease-in-out, opacity 0.2s ease-in-out;
+                backface-visibility: hidden;
+            }
+            body:not(.download) li.result:hover {
+                cursor: pointer;
+            }
+            .result__overlay {
+                transition: all 0.3s;
+                background: rgba(57, 63, 84, 0.67);
+                width: 100%;
+                height: 100%;
+                opacity: 0;
+                border-radius: 4px;
+                position: absolute;
+                top: 0;
+                text-align: center;
+                font-size: 50px;
+            }
+            .result__overlay i {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+            body:not(.download) .result-container:hover .result {
+                opacity: 1;
+            }
+            body:not(.download) .result-container:hover .result__overlay {
+                opacity: 1;
+            }
+            .result {
+                margin-top: 20px;
+                background: rgba(57, 63, 84, 0.85);
+                border-radius: 4px;
+            }
+            .result__thumbnail {
+                display: inline-block;
+                margin-right: 16px;
+            }
+            .result__thumbnail img {
+                border-top-left-radius: 4px;
+                border-bottom-right-radius: 2px;
+            }
+            .result__text {
+                display: inline-block;
+                vertical-align: top;
+                color: #BFD2FF;
+            }
+            .result__description {
+                color: #7881A1;
+            }
+
+            body.download .styled-input {
+                opacity: 0;
+            }
+            body.download .result {
+                opacity: 0;
+                pointer-events: none;
+            }
+            body.download .result-container.download .result {
+                opacity: 1;
+                position: absolute;
+                margin-top: 0;
+                pointer-events: all;
+                border-bottom-right-radius: 0;
+                border-bottom-left-radius: 0;
+            }
+            body.download .result-container.download:hover {
+                cursor: default;
+            }
+            body.download .result-container.download + .result-container {
+                margin-top: 220px;
+            }
+
+            #progress {
+                z-index: -999;
+                position: absolute;
+                top: 180px;
+                height: 110px;
+                width: 100%;
+                padding: 10px;
+                background: rgba(57, 63, 84, 0.85);
+                opacity: 0;
+                /*transform: translateY(20px);*/
+                transition: all 0.7s;
+                border-bottom-left-radius: 4px;
+                border-bottom-right-radius: 4px;
+            }
+            body.download #progress {
+                z-index: 1;
+                opacity: 1;
+                /*transform: translateY(0);*/
+            }
+
+            @keyframes move {
+                0% { background-position: 0 0; }
+                100% { background-position: -100px 0; }
+            }
+
+            progress {
+                width: 400px;
+                height: 14px;
+                margin: 16px auto;
+                display: block;
+                -webkit-appearance: none;
+                border: none;
+            }
+            progress::-webkit-progress-bar {
+                background: black;
+                border-radius: 50px;
+                padding: 2px;
+                box-shadow: 0 1px 0px 0 rgba(255, 255, 255, 0.2);
+            }
+            progress::-webkit-progress-value {
+                transition: 0.2s width linear;
+                border-radius: 50px;
+                box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4);
+                background-position: 0% 0%;
+                background: linear-gradient(to right, #B294FF, #57E6E6, #FEFFB8, #57E6E6, #B294FF, #57E6E6);
+                background-size: 200% auto;
+                animation: gradient 3s linear infinite;
+                -webkit-animation: gradient 3s linear 0 infinite;
+            }
+
+            .buttonsContainer {
+                text-align: center;
+            }
+            .button {
+                /*float: left;*/
+                min-width: 150px;
+                max-width: 250px;
+                /*display: block;*/
+                margin: 1em;
+                padding: 1em 2em;
+                border: none;
+                background: none;
+                color: inherit;
+                vertical-align: middle;
+                position: relative;
+                z-index: 1;
+                -webkit-backface-visibility: hidden;
+            }
+            .button:focus {
+                outline: none;
+            }
+            .button:hover {
+                cursor: pointer;
+            }
+            .button > span {
+                vertical-align: middle;
+            }
+
+            .button[disabled] {
+                cursor: default;
+                opacity: 0.5;
+            }
+
+            /* Moema */
+            .button--moema {
+                padding: 1em 2em;
+                border-radius: 45px;
+                background: #7881A1;
+                color: #fff;
+                -webkit-transition: background-color 0.3s, color 0.3s;
+                transition: background-color 0.3s, color 0.3s;
+            }
+            .button--moema::before {
+                content: '';
+                position: absolute;
+                top: -20px;
+                left: -20px;
+                bottom: -20px;
+                right: -20px;
+                background: inherit;
+                border-radius: 50px;
+                z-index: -1;
+                opacity: 0.4;
+                -webkit-transform: scale3d(0.8, 0.5, 1);
+                transform: scale3d(0.8, 0.5, 1);
+            }
+            .button--moema:hover:enabled,
+            .button--moema:focus:enabled {
+                background: #BFD2FF;
+            }
+            .button--moema.button--moema-anim {
+                -webkit-transition: background-color 0.1s 0.3s, color 0.1s 0.3s;
+                transition: background-color 0.1s 0.3s, color 0.1s 0.3s;
+                color: #ECEFF1;
+                background-color: #82a7ff;
+                -webkit-animation: anim-moema-1 0.3s forwards;
+                animation: anim-moema-1 0.3s forwards;
+            }
+            .button--moema.button--moema-anim::before {
+                -webkit-animation: anim-moema-2 0.3s 0.3s forwards;
+                animation: anim-moema-2 0.3s 0.3s forwards;
+            }
+            @-webkit-keyframes anim-moema-1 {
+                60% {
+                    -webkit-transform: scale3d(0.8, 0.8, 1);
+                    transform: scale3d(0.8, 0.8, 1);
+                }
+                85% {
+                    -webkit-transform: scale3d(1.1, 1.1, 1);
+                    transform: scale3d(1.1, 1.1, 1);
+                }
+                100% {
+                    -webkit-transform: scale3d(1, 1, 1);
+                    transform: scale3d(1, 1, 1);
+                }
+            }
+            @keyframes anim-moema-1 {
+                60% {
+                    -webkit-transform: scale3d(0.8, 0.8, 1);
+                    transform: scale3d(0.8, 0.8, 1);
+                }
+                85% {
+                    -webkit-transform: scale3d(1.1, 1.1, 1);
+                    transform: scale3d(1.1, 1.1, 1);
+                }
+                100% {
+                    -webkit-transform: scale3d(1, 1, 1);
+                    transform: scale3d(1, 1, 1);
+                }
+            }
+            @-webkit-keyframes anim-moema-2 {
+                to {
+                    opacity: 0;
+                    -webkit-transform: scale3d(1, 1, 1);
+                    transform: scale3d(1, 1, 1);
+                }
+            }
+            @keyframes anim-moema-2 {
+                to {
+                    opacity: 0;
+                    -webkit-transform: scale3d(1, 1, 1);
+                    transform: scale3d(1, 1, 1);
+                }
+            }
+
+        </style>
+        <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="styled-input"><input type="search" placeholder="♩ ♪ ♫ ♬ ?" autofocus></div>
+        <div id="wrapper"><ol id="results"></ol></div>
+        <div id="progress">
+            <progress max="100" value="0"></progress>
+            <div class="buttonsContainer">
+                <button id="cancel" class="button button--cancel">Cancel</button>
+                <button id="import" class="button button--moema" disabled>Import</button>
+            </div>
+        </div>
+        <script src="index.js"></script>
+    </body>
+</html>

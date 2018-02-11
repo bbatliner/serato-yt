@@ -1,0 +1,21 @@
+{
+  "name": "serato-yt",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "electron": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fluent-ffmpeg": "^2.1.2",
+    "single-line-log": "^1.1.2",
+    "win32ole": "git+https://github.com/durs/node-win32ole.git",
+    "ytdl-core": "^0.20.1"
+  },
+  "devDependencies": {
+    "electron": "1.8.2"
+  }
+}
