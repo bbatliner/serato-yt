@@ -94,7 +94,9 @@ function renderVideos (videos) {
 
 const cancelBtn = document.getElementById('cancel')
 cancelBtn.addEventListener('click', () => {
-  require('electron').remote.app.emit('cancel')
+  if (importBtn.disabled) {
+    require('electron').remote.app.emit('cancel')
+  }
   backToNormalView()
 })
 
@@ -123,6 +125,7 @@ function showDownloadView (videoEl) {
 
 function backToNormalView () {
   cancelBtn.textContent = 'Cancel'
+  importBtn.setAttribute('disabled', true)
   document.querySelector('progress').value = 0
   document.body.classList.remove('download')
   const toDownload = document.querySelector('.download')

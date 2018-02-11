@@ -54,7 +54,7 @@ module.exports = function download (url, progressCb, cancelPromise) {
   })
 
   const filePromise = metadataPromise.then(metadata => {
-    const filepath = `mp3s\\${metadata.title.replace(/"/g, '').replace(/\(/g, '').replace(/\)/g, '').replace(/\?/g, '')}.mp3`
+    const filepath = `mp3s\\${metadata.title.replace(/"/g, '').replace(/\(/g, '').replace(/\)/g, '').replace(/\?/g, '').replace(/\./g, '').replace(/\|/g, '').replace('  ', ' ').replace(/\,/g, '')}.mp3`
     writer.output(fs.createWriteStream(filepath)).run()
     return new Promise((resolve, reject) => {
       writer.on('end', () => {

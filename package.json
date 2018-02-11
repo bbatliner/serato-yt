@@ -16,6 +16,6 @@
     "ytdl-core": "^0.20.1"
   },
   "devDependencies": {
-    "electron": "1.8.2"
+    "electron": "1.8.2-beta.4"
   }
 }

@@ -18,13 +18,16 @@ const url = require('url')
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
 
+// Ditto for the tray
+let tray
+
 function registerTray () {
-  // tray = new Tray()
-  // const contextMenu = Menu.buildFromTemplate([
-  //   { label: 'Click me', type: 'radio'}
-  // ])
-  // tray.setTooltip('YouTube to Serato')
-  // tray.setContextMenu(contextMenu)
+  tray = new Tray('./serato-yt.ico')
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Click me', type: 'radio'}
+  ])
+  tray.setToolTip('Serato YouTube Importer')
+  tray.setContextMenu(contextMenu)
 }
 
 function createWindow () {
@@ -38,7 +41,7 @@ function createWindow () {
     frame: false,
     transparent: true,
     toolbar: false,
-    // skipTaskbar: true,
+    skipTaskbar: true,
     maximizable: false,
     fullscreenable: false
 })
@@ -68,6 +71,7 @@ app.on('ready', () => {
   registerTray()
   const ret = globalShortcut.register('CommandOrControl+Alt+D', () => {
     mainWindow.show()
+    mainWindow.webContents.executeJavaScript('document.querySelector("input").focus()')
   })
   createWindow()
 })
@@ -84,13 +88,14 @@ app.on('window-all-closed', function () {
 app.on('activate', function () {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (mainWindow === null) {
+  if (mainWindow == null) {
     createWindow()
   }
 })
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  tray = null
 })
 
 // In this file you can include the rest of your app's specific main process
@@ -106,6 +111,13 @@ app.on('video', (url) => {
   }, new Promise((_, reject) => {
     app.on('cancel', reject)
   })).then(filepath => {
+    // tray.once('balloon-click', () => {
+    //   mainWindow.show()
+    // })
+    // tray.displayBalloon({
+    //   title: 'Download ready for import.',
+    //   content: 'Click here or press Ctrl+Alt+D to open.'
+    // })
     latestFilepath = filepath
   })
 })
