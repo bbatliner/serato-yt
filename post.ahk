@@ -9,7 +9,9 @@ x := A_CaretX
 y := A_CaretY
 Send {ESC}
 Sleep 10
-MouseClickDrag, Left, x, y, -x, y, 0
+MouseMove, x, y, 0
+CoordMode, Mouse, Screen
+MouseClickDrag, Left,,, A_Args[1], A_Args[2], 0
 Sleep 50
 WinMove, A,, origX, origY, origWidth, origHeight
 Sleep 10

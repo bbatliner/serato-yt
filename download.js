@@ -2,8 +2,9 @@ const fs = require('fs')
 const ffmpeg = require('fluent-ffmpeg')
 const ytdl = require('ytdl-core')
 const sllog = require('single-line-log').stdout
+const sanitize = require('sanitize-filename')
 
-module.exports = function download (url, progressCb, cancelPromise) {
+module.exports = function download (url, dlpath, progressCb, cancelPromise) {
   const opts = {
     filter: 'audioonly',
     quality: 'highestaudio',
@@ -26,7 +27,9 @@ module.exports = function download (url, progressCb, cancelPromise) {
       if (percentage !== 0) {
         sllog(`${percentage}% complete (${progress} of ${total} bytes)`)
       }
-      progressCb(percentage)
+      if (typeof progressCb === 'function') {
+        progressCb(percentage)
+      }
     })
     .on('end', () => {
       console.log() // advance the sllog
@@ -54,7 +57,7 @@ module.exports = function download (url, progressCb, cancelPromise) {
   })
 
   const filePromise = metadataPromise.then(metadata => {
-    const filepath = `mp3s\\${metadata.title.replace(/"/g, '').replace(/\(/g, '').replace(/\)/g, '').replace(/\?/g, '').replace(/\./g, '').replace(/\|/g, '').replace('  ', ' ').replace(/\,/g, '')}.mp3`
+    const filepath = `${dlpath}\\${sanitize(metadata.title)}.mp3`
     writer.output(fs.createWriteStream(filepath)).run()
     return new Promise((resolve, reject) => {
       writer.on('end', () => {

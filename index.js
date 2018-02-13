@@ -1,3 +1,9 @@
+// Setup click through
+const win = require('electron').remote.getCurrentWindow()
+const size = win.getSize()
+const searchHeight = document.getElementById('search').offsetHeight
+require('electron').ipcRenderer.send('resize', size[0], searchHeight)
+
 // Query youtube on debounced inputs
 const input = document.querySelector('input')
 input.addEventListener('input', debounce(() => {
@@ -22,10 +28,12 @@ input.addEventListener('input', debounce(() => {
   Promise.all([videosPromise, durationsPromise]).then(([videos]) => {
     renderVideos(videos)
   })
-}, 325))
+}, 350))
 
 function jsonToVideos (json) {
-  return json.items.map(item => ({
+  return json.items.filter(item => {
+    return item.id.kind === 'youtube#video'
+  }).map(item => ({
     videoId: item.id.videoId,
     channelTitle: item.snippet.channelTitle,
     title: item.snippet.title,
@@ -46,6 +54,10 @@ const progress = document.getElementById('progress')
 const resultsList = document.getElementById('results')
 function renderVideos (videos) {
   for (let i = 0; i < resultsList.children.length; i++) {
+    if (resultsList.children[i].classList.contains('fadeout')) {
+      return
+    }
+    resultsList.children[i].classList.add('fadeout')
     resultsList.children[i].style.animationDuration = '0.3s'
     resultsList.children[i].style.animationTimingFunction = 'ease-in-out'
     resultsList.children[i].style.animationName = 'fadeout'
@@ -59,7 +71,7 @@ function renderVideos (videos) {
   videos.forEach(video => {
     const html = [
       '<div class="result-container">',
-        `<li class="result" style="height: ${video.thumbnail.height}px; animation: fadein ${fadeInDuration += 0.37}s;">`,
+        `<li class="result" style="height: ${video.thumbnail.height}px; animation: fadein ${fadeInDuration += 0.36}s;">`,
           '<div class="result__thumbnail">',
             `<img src="${video.thumbnail.url}" width=${video.thumbnail.width} height=${video.thumbnail.height}>`,
           '</div>',
@@ -75,17 +87,14 @@ function renderVideos (videos) {
     const wrapper = document.createElement('div')
     wrapper.innerHTML = html
     const videoEl = wrapper.firstChild.firstChild
-    let dlInProgress = false
     videoEl.addEventListener('click', (e) => {
-      if (e.target !== progress && !progress.contains(e.target) && !dlInProgress) {
-        dlInProgress = true
+      if (e.target !== progress && !progress.contains(e.target) && !document.body.classList.contains('download')) {
         showDownloadView(videoEl)
-        require('electron').remote.app.emit('video', `https://www.youtube.com/watch?v=${video.videoId}`)
+        require('electron').ipcRenderer.send('video', `https://www.youtube.com/watch?v=${video.videoId}`)
         require('electron').ipcRenderer.on('dl-progress', (_, percentage) => {
           document.querySelector('progress').value = percentage
         })
         require('electron').ipcRenderer.on('dl-complete', () => {
-          dlInProgress = false
           importBtn.removeAttribute('disabled')
           cancelBtn.textContent = 'Back'
         })
@@ -93,22 +102,30 @@ function renderVideos (videos) {
     })
     resultsList.appendChild(wrapper.firstChild)
   })
+  // Adjust window size
+  if (videos.length) {
+    const computedStyle = window.getComputedStyle(document.querySelector('li.result'))
+    const resultSizePx = parseInt(computedStyle.getPropertyValue('height')) + parseInt(computedStyle.getPropertyValue('margin-top'))
+    require('electron').ipcRenderer.send('resize', size[0], Math.min(searchHeight + resultsList.children.length * resultSizePx, size[1]))
+  } else {
+    setTimeout(() => require('electron').ipcRenderer.send('resize', size[0], searchHeight), 300)
+  }
 }
 
 const cancelBtn = document.getElementById('cancel')
 cancelBtn.addEventListener('click', () => {
   if (importBtn.disabled) {
-    require('electron').remote.app.emit('cancel')
+    require('electron').ipcRenderer.send('cancel')
   }
   backToNormalView()
 })
 
 const importBtn = document.getElementById('import')
 importBtn.addEventListener('click', () => {
-  setTimeout(() => require('electron').remote.app.emit('import'), 400)
+  setTimeout(() => require('electron').ipcRenderer.send('import'), 500)
   importBtn.addEventListener('animationend', function once () {
     importBtn.removeEventListener('animationend', once)
-    setTimeout(() => importBtn.classList.remove('button--moema-anim'), 400)
+    setTimeout(() => importBtn.classList.remove('button--moema-anim'), 500)
   })
   importBtn.classList.add('button--moema-anim')
 })
@@ -124,6 +141,13 @@ function showDownloadView (videoEl) {
   document.body.classList.add('download')
   videoEl.parentNode.classList.add('download')
   setTimeout(() => { videoEl.style.transition = ''; videoEl.style.top = 0 }, 200)
+
+  // Update window size
+  setTimeout(() => {
+    const computedStyle = window.getComputedStyle(videoEl)
+    const resultSizePx = parseInt(computedStyle.getPropertyValue('height')) + parseInt(computedStyle.getPropertyValue('margin-top'))
+    require('electron').ipcRenderer.send('resize', size[0], Math.min(resultSizePx + progress.offsetHeight, size[1]))
+  }, 400)
 }
 
 function backToNormalView () {
@@ -137,6 +161,11 @@ function backToNormalView () {
   progress.style.width = ''
   progress.parentNode.removeChild(progress)
   document.body.appendChild(progress)
+
+  // Update window size
+  const computedStyle = window.getComputedStyle(document.querySelector('li.result'))
+  const resultSizePx = parseInt(computedStyle.getPropertyValue('height')) + parseInt(computedStyle.getPropertyValue('margin-top'))
+  require('electron').ipcRenderer.send('resize', size[0], Math.min(searchHeight + resultsList.children.length * resultSizePx, size[1]))
 }
 
 const isoRegex = /^(-|\+)?P(?:([-+]?[0-9,.]*)Y)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)W)?(?:([-+]?[0-9,.]*)D)?(?:T(?:([-+]?[0-9,.]*)H)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)S)?)?$/

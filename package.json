@@ -10,12 +10,15 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "electron-json-storage": "^4.0.2",
+    "electron-settings": "^3.1.4",
     "fluent-ffmpeg": "^2.1.2",
+    "rimraf": "^2.6.2",
+    "sanitize-filename": "^1.6.1",
     "single-line-log": "^1.1.2",
-    "win32ole": "git+https://github.com/durs/node-win32ole.git",
     "ytdl-core": "^0.20.1"
   },
   "devDependencies": {
-    "electron": "1.8.2-beta.4"
+    "electron": "1.8.2-beta.2"
   }
 }
