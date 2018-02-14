@@ -74,6 +74,7 @@ function renderVideos (videos) {
         `<li class="result" style="height: ${video.thumbnail.height}px; animation: fadein ${fadeInDuration += 0.36}s;">`,
           '<div class="result__thumbnail">',
             `<img src="${video.thumbnail.url}" width=${video.thumbnail.width} height=${video.thumbnail.height}>`,
+            `<span>${video.duration.m}:${video.duration.s < 10 ? '0' + video.duration.s : video.duration.s}</span>`,
           '</div>',
           `<div class="result__text" style="width: calc(100% - 16px - ${video.thumbnail.width}px); height: ${video.thumbnail.height}px">`,
             `<h2 class="result__title">${video.title}</h2>`,
