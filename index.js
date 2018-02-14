@@ -101,6 +101,20 @@ function renderVideos (videos) {
         })
       }
     })
+    videoEl.addEventListener('mouseenter', () => {
+      Array.from(document.querySelectorAll('.focus')).forEach(el => el.classList.remove('focus'))
+      videoEl.parentNode.classList.add('focus')
+    })
+    videoEl.addEventListener('mousemove', () => {
+      if (!videoEl.classList.contains('focus')) {
+        Array.from(document.querySelectorAll('.focus')).forEach(el => el.classList.remove('focus'))
+        videoEl.parentNode.classList.add('focus')
+      }
+    })
+    videoEl.addEventListener('mouseleave', () => {
+      hasMouseMoved = false
+      videoEl.parentNode.classList.remove('focus')
+    })
     resultsList.appendChild(wrapper.firstChild)
   })
   // Adjust window size
@@ -112,14 +126,6 @@ function renderVideos (videos) {
     setTimeout(() => require('electron').ipcRenderer.send('resize', size[0], searchHeight), 300)
   }
 }
-
-const cancelBtn = document.getElementById('cancel')
-cancelBtn.addEventListener('click', () => {
-  if (importBtn.disabled) {
-    require('electron').ipcRenderer.send('cancel')
-  }
-  backToNormalView()
-})
 
 const importBtn = document.getElementById('import')
 importBtn.addEventListener('click', () => {
@@ -138,8 +144,10 @@ function showDownloadView (videoEl) {
   videoEl.style.transition = 'none'
   videoEl.style.top = `${videoEl.getBoundingClientRect().top}px`
   videoEl.style.width = correctWidth
+  cancelBtn.removeAttribute('disabled')
   progress.style.width = `${parseFloat(correctWidth) - 3}px`
   document.body.classList.add('download')
+  videoEl.parentNode.classList.remove('focus')
   videoEl.parentNode.classList.add('download')
   setTimeout(() => { videoEl.style.transition = ''; videoEl.style.top = 0 }, 200)
 
@@ -153,6 +161,7 @@ function showDownloadView (videoEl) {
 
 function backToNormalView () {
   cancelBtn.textContent = 'Cancel'
+  cancelBtn.setAttribute('disabled', true)
   importBtn.setAttribute('disabled', true)
   document.querySelector('progress').value = 0
   document.body.classList.remove('download')
@@ -168,6 +177,53 @@ function backToNormalView () {
   const resultSizePx = parseInt(computedStyle.getPropertyValue('height')) + parseInt(computedStyle.getPropertyValue('margin-top'))
   require('electron').ipcRenderer.send('resize', size[0], Math.min(searchHeight + resultsList.children.length * resultSizePx, size[1]))
 }
+
+const cancelBtn = document.getElementById('cancel')
+cancelBtn.addEventListener('click', () => {
+  if (importBtn.disabled) {
+    require('electron').ipcRenderer.send('cancel')
+  }
+  backToNormalView()
+})
+
+// Keyboard control
+document.addEventListener('keydown', (e) => {
+  if (e.keyCode === 40) { // down
+    if (resultsList.children.length) {
+      const existingFocus = resultsList.querySelector('.focus')
+      if (!existingFocus) {
+        resultsList.firstChild.classList.add('focus')
+        animateScrollTop(resultsList, resultsList.firstChild.firstChild.offsetTop - resultsList.offsetTop - 20, 350)
+      } else if (existingFocus.nextSibling) {
+        existingFocus.classList.remove('focus')
+        existingFocus.nextSibling.classList.add('focus')
+        animateScrollTop(resultsList, existingFocus.nextSibling.offsetTop - resultsList.offsetTop - 20, 350)
+      }
+    }
+  } else if (e.keyCode === 38) { // up
+    if (resultsList.children.length) {
+      const existingFocus = resultsList.querySelector('.focus')
+      if (existingFocus && existingFocus.previousSibling) {
+        existingFocus.classList.remove('focus')
+        existingFocus.previousSibling.classList.add('focus')
+        animateScrollTop(resultsList, existingFocus.previousSibling.offsetTop - resultsList.offsetTop - 20, 350)
+      }
+    } else {
+      Array.from(document.querySelectorAll('.focus')).forEach(el => el.classList.remove('focus'))
+    }
+  } else if (e.keyCode === 13) { // enter
+    const existingFocus = resultsList.querySelector('.focus')
+    if (existingFocus) {
+      existingFocus.firstChild.click()
+    } else if (!importBtn.disabled) {
+      importBtn.click()
+    }
+  } else if (e.keyCode === 27) { // escape
+    if (!cancelBtn.disabled) {
+      cancelBtn.click()
+    }
+  }
+})
 
 const isoRegex = /^(-|\+)?P(?:([-+]?[0-9,.]*)Y)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)W)?(?:([-+]?[0-9,.]*)D)?(?:T(?:([-+]?[0-9,.]*)H)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)S)?)?$/
 function parseDuration (isoDuration) {
@@ -190,6 +246,30 @@ function parseIso (inp, sign) {
   var res = inp && parseFloat(inp.replace(',', '.'));
   // apply sign while we're at it
   return (isNaN(res) ? 0 : res) * sign;
+}
+
+let animateCalls = 0
+function easeInOutCubic (t) { return t<.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1 }
+function animateScrollTop (element, end, duration, easingFn = easeInOutCubic) {
+  ++animateCalls
+  document.body.classList.add('disable-hover')
+  const begin = element.scrollTop
+  let start
+  function step (timestamp) {
+    if (!start) start = timestamp
+    const progress = timestamp - start
+    element.scrollTop = begin + (end - begin) * easingFn(progress / duration)
+    if (progress < duration) {
+      window.requestAnimationFrame(step)
+    } else {
+      // to prevent mouseenters from firing immediately after scroll ends
+      --animateCalls
+      if (animateCalls === 0) {
+        setTimeout(() => document.body.classList.remove('disable-hover'), 250)
+      }
+    }
+  }
+  window.requestAnimationFrame(step)
 }
 
 function getPosition(element) {

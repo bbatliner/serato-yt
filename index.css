@@ -12,6 +12,10 @@ html, body {
 body {
     -webkit-font-smoothing: antialiased;
 }
+.disable-hover,
+.disable-hover * {
+  pointer-events: none !important;
+}
 @keyframes gradient { 
     0%   { background-position: 0 0 }
     100% { background-position: 100% 0 }
@@ -109,10 +113,10 @@ body:not(.download) li.result:hover {
     left: 50%;
     transform: translate(-50%, -50%);
 }
-body:not(.download) .result-container:hover .result {
+body:not(.download) .result-container.focus .result {
     opacity: 1;
 }
-body:not(.download) .result-container:hover .result__overlay {
+body:not(.download) .result-container.focus .result__overlay {
     opacity: 1;
 }
 .result {
